@@ -84,6 +84,10 @@
             return;
         }
         
+        
+//        callback(foreGroundSquareVideoUrl);
+//        return;
+        
         NSLog(@"merging the two cropped videos");
         
         AVAsset* frontAsset = [AVAsset assetWithURL:foreGroundSquareVideoUrl];
@@ -92,18 +96,20 @@
         AVMutableComposition* mixComposition = [[AVMutableComposition alloc] init];
         
         AVMutableCompositionTrack *frontVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
-        [frontVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration) ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
+        [frontVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration)
+                                 ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+                                  atTime:kCMTimeZero error:nil];
         
-        
-//        AVMutableCompositionTrack *frontAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
-//
-//        [frontAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration)
-//                            ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
-//                             atTime:kCMTimeZero error:nil];
-
         
         AVMutableCompositionTrack *backVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
         [backVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, backAsset.duration) ofTrack:[[backAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
+        
+        
+        AVMutableCompositionTrack *frontAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+        [frontAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration)
+                                 ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                                  atTime:kCMTimeZero error:nil];
+
         
         AVMutableVideoCompositionInstruction * MainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
@@ -122,13 +128,11 @@
         
         AVMutableVideoComposition *MainCompositionInst = [AVMutableVideoComposition videoComposition];
         MainCompositionInst.instructions = [NSArray arrayWithObject:MainInstruction];
-        
         MainCompositionInst.customVideoCompositorClass = [MuzeCircleMergeVideoComposer class];
-        
         MainCompositionInst.frameDuration = CMTimeMake(1, 30);
         MainCompositionInst.renderSize = backVideoTrack.naturalSize;
         
-        NSString *myPathDocs = [self getFilePathWithExtension:@"mp4"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
+        NSString *myPathDocs = [self getFilePathWithExtension:@"mov"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
         
         if([[NSFileManager defaultManager] fileExistsAtPath:myPathDocs])
         {
@@ -144,7 +148,7 @@
         MuzeCircleMergeVideoComposer* compositor = (MuzeCircleMergeVideoComposer*) exporter.customVideoCompositor;
         compositor.delegate = self;
         
-        exporter.outputFileType = AVFileTypeMPEG4;
+        exporter.outputFileType = AVFileTypeQuickTimeMovie;
         
         [exporter exportAsynchronouslyWithCompletionHandler:^
          {
@@ -237,7 +241,20 @@
     AVAsset* asset = [AVAsset assetWithURL:url];
     
     AVMutableComposition *composition = [AVMutableComposition composition];
-    [composition  addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+    
+    AVMutableCompositionTrack *videoTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+    [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
+                        ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+                         atTime:kCMTimeZero error:nil];
+
+    
+    
+    
+    AVMutableCompositionTrack *audioTrack = [composition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+    [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
+                        ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                         atTime:kCMTimeZero error:nil];
+
     
     // input clip
     AVAssetTrack *clipVideoTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
