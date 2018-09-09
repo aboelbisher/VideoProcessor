@@ -14,6 +14,7 @@
 
 -(CGSize) customVideoCompositorDelegateGetFrontSize;
 -(CGPoint) customVideoCompositorDelegateGetOrigin;
+-(Boolean) customVideoCompositorDelegateShouldStrokeFrontCircle;
 
 @end
 

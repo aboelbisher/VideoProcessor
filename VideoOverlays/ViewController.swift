@@ -22,6 +22,9 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
 //    private var cropBtn : UIButton!
     
     
+    private var switcher : UISwitch!
+    
+    
     private var mergeBtn : UIButton!
     
     private var videoLayer : AVPlayerLayer!
@@ -41,7 +44,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         
         self.videoProccessor = VideoProcessor()
         
-        let heights = CGFloat(40)
+        let heights = CGFloat(60)
         
         self.chooseVideoBtn1 = UIButton(frame: CGRect(x: 0, y: 60, width: self.view.bounds.width, height: heights))
         self.chooseVideoBtn1.setTitle("Choose BackGround video", for: .normal)
@@ -51,7 +54,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.chooseVideoBtn1.tag = 0
         self.chooseVideoBtn1.addTarget(self, action: #selector(self.btnClicked(sender:)), for: .touchUpInside)
         
-        self.chooseVideoBtn2 = UIButton(frame: CGRect(x: 0, y: 100, width: self.view.bounds.width, height: heights))
+        self.chooseVideoBtn2 = UIButton(frame: CGRect(x: 0, y: self.chooseVideoBtn1.frame.origin.y + self.chooseVideoBtn1.frame.size.height, width: self.view.bounds.width, height: heights))
         self.chooseVideoBtn2.setTitle("Choose Front video", for: .normal)
         self.chooseVideoBtn2.setTitleColor(.white, for: .normal)
         self.chooseVideoBtn2.backgroundColor = .blue
@@ -59,7 +62,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.chooseVideoBtn2.tag = 1
         self.chooseVideoBtn2.addTarget(self, action: #selector(self.btnClicked(sender:)), for: .touchUpInside)
         
-        self.mergeBtn = UIButton(frame: CGRect(x: 0, y: 140, width: self.view.bounds.width, height: heights))
+        self.mergeBtn = UIButton(frame: CGRect(x: 0, y: self.chooseVideoBtn2.frame.origin.y + self.chooseVideoBtn2.frame.size.height, width: self.view.bounds.width, height: heights))
         self.mergeBtn.setTitle("!MERGE!", for: .normal)
         self.mergeBtn.setTitleColor(.white, for: .normal)
         self.mergeBtn.backgroundColor = .black
@@ -90,7 +93,13 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.originYTxtField.keyboardType = .decimalPad
         self.originYTxtField.textAlignment = .center
         self.originYTxtField.text = "30"
-
+        
+        
+        self.switcher = UISwitch()
+        self.switcher.frame = CGRect(x: self.view.bounds.width / 2 - self.switcher.frame.width / 2 ,
+                                     y: self.scaleTxtField.frame.origin.y + self.scaleTxtField.frame.size.height,
+                                     width: self.switcher.frame.size.width, height: self.switcher.frame.size.height)
+        self.view.addSubview(self.switcher)
     }
     
     
@@ -157,6 +166,8 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
             {
                 if let _originY = NumberFormatter().number(from: self.originYTxtField.text ?? "")?.floatValue
                 {
+                    self.videoProccessor.shouldStroke = self.switcher.isOn
+
                     self.videoProccessor.mergeBgVideo(self.url1,
                                                       withForeGroundVideo: self.url2,
                                                       frontVideoSize: CGSize(width: CGFloat(_scale * 720), height: CGFloat(_scale * 720)),
@@ -187,7 +198,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
             self.videoLayer = AVPlayerLayer(player: self.player)
             self.videoLayer.backgroundColor = UIColor.green.cgColor
             
-            self.videoLayer.frame = CGRect(x: 0, y: 220, width: self.view.bounds.width, height: self.view.bounds.width)
+            self.videoLayer.frame = CGRect(x: 0, y: self.switcher.frame.origin.y + self.switcher.frame.size.height, width: self.view.bounds.width, height: self.view.bounds.width)
             
             self.videoLayer!.videoGravity = AVLayerVideoGravity.resize
             self.view.layer.addSublayer(self.videoLayer)

@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "kisspng-triangle-computer-icons-scalable-vector-graphics-c-triangle-png-5ab1c1386954b1.1413139615215987764315.png",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "universal",
+      "filename" : "kisspng-triangle-computer-icons-scalable-vector-graphics-c-triangle-png-5ab1c1386954b1.1413139615215987764315-1.png",
+      "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "filename" : "kisspng-triangle-computer-icons-scalable-vector-graphics-c-triangle-png-5ab1c1386954b1.1413139615215987764315-2.png",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "version" : 1,
+    "author" : "xcode"
+  }
+}

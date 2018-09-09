@@ -21,4 +21,7 @@
 -(void)cropSquareVideoWithUrl:(NSURL*)url makeItCircle:(BOOL)isCricle completionHandler:(void(^)(NSURL*))callback;
 
 
+@property(nonatomic) Boolean shouldStroke;
+
+
 @end

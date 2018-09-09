@@ -27,6 +27,7 @@
     if(self)
     {
         _frontSize = CGSizeZero;
+        _shouldStroke = YES;
     }
     return self;
 }
@@ -45,7 +46,7 @@
     
     NSLog(@"cropping bg video...");
     dispatch_group_enter(croppVideosGroup);
-    [self cropSquareVideoWithUrl:bgVideo makeItCircle:NO completionHandler:^(NSURL* croppedBgUrl) {
+    [self cropSquareVideoWithUrl:bgVideo completionHandler:^(NSURL* croppedBgUrl) {
         
         bgSquareVideoUrl = croppedBgUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -59,7 +60,7 @@
     
     NSLog(@"cropping foreG video ...");
     dispatch_group_enter(croppVideosGroup);
-    [self cropSquareVideoWithUrl:foreGVideo makeItCircle:NO completionHandler:^(NSURL* croppedForeGUrl) {
+    [self cropSquareVideoWithUrl:foreGVideo completionHandler:^(NSURL* croppedForeGUrl) {
         
         foreGroundSquareVideoUrl = croppedForeGUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -111,10 +112,10 @@
                                   atTime:kCMTimeZero error:nil];
 
         
-        AVMutableVideoCompositionInstruction * MainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
+        AVMutableVideoCompositionInstruction * mainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
         //see what the duration will be
-        MainInstruction.timeRange = CMTimeRangeMake(kCMTimeZero,frontAsset.duration);
+        mainInstruction.timeRange = CMTimeRangeMake(kCMTimeZero,frontAsset.duration);
         
         AVMutableVideoCompositionLayerInstruction *frontLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:frontVideoTrack];
         frontLayerInstruction.trackID = 1;
@@ -124,10 +125,10 @@
         backLayerInstruction.trackID = 2;
         [self fixOrientation:backLayerInstruction withAsset:backAsset];
         
-        MainInstruction.layerInstructions = [NSArray arrayWithObjects:frontLayerInstruction,backLayerInstruction,nil];;
+        mainInstruction.layerInstructions = [NSArray arrayWithObjects:frontLayerInstruction,backLayerInstruction,nil];;
         
         AVMutableVideoComposition *MainCompositionInst = [AVMutableVideoComposition videoComposition];
-        MainCompositionInst.instructions = [NSArray arrayWithObject:MainInstruction];
+        MainCompositionInst.instructions = [NSArray arrayWithObject:mainInstruction];
         MainCompositionInst.customVideoCompositorClass = [MuzeCircleMergeVideoComposer class];
         MainCompositionInst.frameDuration = CMTimeMake(1, 30);
         MainCompositionInst.renderSize = backVideoTrack.naturalSize;
@@ -203,38 +204,37 @@
     [videolayerInstruction setTransform:videoAssetTrack.preferredTransform atTime:kCMTimeZero];
 }
 
--(void)cropAsCircleWithComposistion:(AVMutableVideoComposition*)composition size:(CGSize)size
-{
-    // 1 - Layer setup
-    CALayer *parentLayer = [CALayer layer];
-    CALayer *videoLayer = [CALayer layer];
-    
-    parentLayer.frame = CGRectMake(0, 0, size.width, size.height);
-    videoLayer.frame = CGRectMake(0, 0, size.width, size.height);
-    
-    [parentLayer addSublayer:videoLayer];
-    
-    [videoLayer setCornerRadius:size.height / 2];
-    [videoLayer setMasksToBounds:YES];
-    
-    [videoLayer setBackgroundColor:[UIColor redColor].CGColor];
-    [parentLayer setBackgroundColor:[UIColor clearColor].CGColor];
+//-(void)cropAsCircleWithComposistion:(AVMutableVideoComposition*)composition size:(CGSize)size
+//{
+//    // 1 - Layer setup
+//    CALayer *parentLayer = [CALayer layer];
+//    CALayer *videoLayer = [CALayer layer];
+//
+//    parentLayer.frame = CGRectMake(0, 0, size.width, size.height);
+//    videoLayer.frame = CGRectMake(0, 0, size.width, size.height);
+//
+//    [parentLayer addSublayer:videoLayer];
+//
+//    [videoLayer setCornerRadius:size.height / 2];
+//    [videoLayer setMasksToBounds:YES];
+//
+//    [videoLayer setBackgroundColor:[UIColor redColor].CGColor];
+//    [parentLayer setBackgroundColor:[UIColor clearColor].CGColor];
+//
+//
+//
+//    // 5 - Composition
+//    composition.animationTool = [AVVideoCompositionCoreAnimationTool
+//                                 videoCompositionCoreAnimationToolWithPostProcessingAsVideoLayer:videoLayer inLayer:parentLayer];
+//}
 
-    
 
-    // 5 - Composition
-    composition.animationTool = [AVVideoCompositionCoreAnimationTool
-                                 videoCompositionCoreAnimationToolWithPostProcessingAsVideoLayer:videoLayer inLayer:parentLayer];
-}
-
-
--(void)cropSquareVideoWithUrl:(NSURL*)url makeItCircle:(BOOL)isCricle completionHandler:(void(^)(NSURL*))callback
+-(void)cropSquareVideoWithUrl:(NSURL*)url completionHandler:(void(^)(NSURL*))callback
 {
     NSString* outputPath = [self getFilePathWithExtension:@"mp4"];///[docFolder stringByAppendingPathComponent:@"croppedVideo.mp4"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:outputPath])
     {
         [[NSFileManager defaultManager] removeItemAtPath:outputPath error:nil];
-        
     }
     
     // input file
@@ -264,10 +264,10 @@
     videoComposition.renderSize = CGSizeMake(clipVideoTrack.naturalSize.height, clipVideoTrack.naturalSize.height);
     
     videoComposition.frameDuration = CMTimeMake(1, 30);
-    if (isCricle)
-    {
-        [self cropAsCircleWithComposistion:videoComposition size:videoComposition.renderSize];
-    }
+//    if (isCricle)
+//    {
+//        [self cropAsCircleWithComposistion:videoComposition size:videoComposition.renderSize];
+//    }
     AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
     instruction.timeRange = CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(60, 30) );
     
@@ -323,6 +323,11 @@
 - (CGPoint)customVideoCompositorDelegateGetOrigin
 {
     return _frontOrigin;
+}
+
+- (Boolean)customVideoCompositorDelegateShouldStrokeFrontCircle
+{
+    return _shouldStroke;
 }
 @end
 
