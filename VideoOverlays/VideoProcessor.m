@@ -132,7 +132,7 @@
         MainCompositionInst.frameDuration = CMTimeMake(1, 30);
         MainCompositionInst.renderSize = backVideoTrack.naturalSize;
         
-        NSString *myPathDocs = [self getFilePathWithExtension:@"mov"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
+        NSString *myPathDocs = [self getFilePathWithExtension:@"mp4"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
         
         if([[NSFileManager defaultManager] fileExistsAtPath:myPathDocs])
         {
@@ -148,7 +148,7 @@
         MuzeCircleMergeVideoComposer* compositor = (MuzeCircleMergeVideoComposer*) exporter.customVideoCompositor;
         compositor.delegate = self;
         
-        exporter.outputFileType = AVFileTypeQuickTimeMovie;
+        exporter.outputFileType = AVFileTypeMPEG4;
         
         [exporter exportAsynchronouslyWithCompletionHandler:^
          {
