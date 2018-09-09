@@ -13,7 +13,7 @@
 		F99147F02141181900649FBE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F99147EF2141181900649FBE /* Assets.xcassets */; };
 		F99147F32141181900649FBE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F99147F12141181900649FBE /* LaunchScreen.storyboard */; };
 		F99147FD21411C7100649FBE /* VideoProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = F99147FC21411C7100649FBE /* VideoProcessor.m */; };
-		F9914800214178A800649FBE /* CustomVideoCompositor.m in Sources */ = {isa = PBXBuildFile; fileRef = F99147FF214178A800649FBE /* CustomVideoCompositor.m */; };
+		F9914800214178A800649FBE /* MuzeCircleMergeVideoComposer.m in Sources */ = {isa = PBXBuildFile; fileRef = F99147FF214178A800649FBE /* MuzeCircleMergeVideoComposer.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,8 +27,8 @@
 		F99147FA21411C7000649FBE /* VideoOverlays-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "VideoOverlays-Bridging-Header.h"; sourceTree = "<group>"; };
 		F99147FB21411C7100649FBE /* VideoProcessor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoProcessor.h; sourceTree = "<group>"; };
 		F99147FC21411C7100649FBE /* VideoProcessor.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoProcessor.m; sourceTree = "<group>"; };
-		F99147FE214178A800649FBE /* CustomVideoCompositor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CustomVideoCompositor.h; sourceTree = "<group>"; };
-		F99147FF214178A800649FBE /* CustomVideoCompositor.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomVideoCompositor.m; sourceTree = "<group>"; };
+		F99147FE214178A800649FBE /* MuzeCircleMergeVideoComposer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MuzeCircleMergeVideoComposer.h; sourceTree = "<group>"; };
+		F99147FF214178A800649FBE /* MuzeCircleMergeVideoComposer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MuzeCircleMergeVideoComposer.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,8 +64,8 @@
 				F99147E82141181800649FBE /* AppDelegate.swift */,
 				F99147FB21411C7100649FBE /* VideoProcessor.h */,
 				F99147FC21411C7100649FBE /* VideoProcessor.m */,
-				F99147FE214178A800649FBE /* CustomVideoCompositor.h */,
-				F99147FF214178A800649FBE /* CustomVideoCompositor.m */,
+				F99147FE214178A800649FBE /* MuzeCircleMergeVideoComposer.h */,
+				F99147FF214178A800649FBE /* MuzeCircleMergeVideoComposer.m */,
 				F99147EA2141181800649FBE /* ViewController.swift */,
 				F99147EC2141181800649FBE /* Main.storyboard */,
 				F99147EF2141181900649FBE /* Assets.xcassets */,
@@ -151,7 +151,7 @@
 				F99147EB2141181800649FBE /* ViewController.swift in Sources */,
 				F99147E92141181800649FBE /* AppDelegate.swift in Sources */,
 				F99147FD21411C7100649FBE /* VideoProcessor.m in Sources */,
-				F9914800214178A800649FBE /* CustomVideoCompositor.m in Sources */,
+				F9914800214178A800649FBE /* MuzeCircleMergeVideoComposer.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +299,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = H294CH7FYG;
 				INFOPLIST_FILE = VideoOverlays/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -320,6 +321,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = H294CH7FYG;
 				INFOPLIST_FILE = VideoOverlays/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

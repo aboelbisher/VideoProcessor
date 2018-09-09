@@ -9,14 +9,16 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
 #import <UIKit/UIKit.h>
-#import "CustomVideoCompositor.h"
+#import "MuzeCircleMergeVideoComposer.h"
 
 
-@interface VideoProcessor : NSObject
+@interface VideoProcessor : NSObject<CustomVideoCompositorDelegate>
 
 
-+ (void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo completion:(void(^)(NSURL*))callback;
-+(void)cropSquareVideoWithUrl:(NSURL*)url completionHandler:(void(^)(NSURL*))callback;
+- (instancetype)init;
+
+-(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo frontVideoSize:(CGSize)frontSize frontOrigin:(CGPoint)frontOrigin completion:(void(^)(NSURL*))callback;
+-(void)cropSquareVideoWithUrl:(NSURL*)url makeItCircle:(BOOL)isCricle completionHandler:(void(^)(NSURL*))callback;
 
 
 @end

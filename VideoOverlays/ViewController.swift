@@ -10,12 +10,16 @@ import UIKit
 import MobileCoreServices
 import AVFoundation
 
-class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavigationControllerDelegate
+class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate
 {
     
     private var chooseVideoBtn1 : UIButton!
     private var chooseVideoBtn2 : UIButton!
-    private var cropBtn : UIButton!
+    
+    private var scaleTxtField : UITextField!
+    private var originXTxtField : UITextField!
+    private var originYTxtField : UITextField!
+//    private var cropBtn : UIButton!
     
     
     private var mergeBtn : UIButton!
@@ -28,11 +32,18 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
     private var url1 : URL!
     private var url2 : URL!
     
+    
+    private var videoProccessor : VideoProcessor!
+    
     override func viewDidLoad()
     {
         super.viewDidLoad()
         
-        self.chooseVideoBtn1 = UIButton(frame: CGRect(x: 0, y: 60, width: self.view.bounds.width, height: CGFloat(40)))
+        self.videoProccessor = VideoProcessor()
+        
+        let heights = CGFloat(40)
+        
+        self.chooseVideoBtn1 = UIButton(frame: CGRect(x: 0, y: 60, width: self.view.bounds.width, height: heights))
         self.chooseVideoBtn1.setTitle("Choose BackGround video", for: .normal)
         self.chooseVideoBtn1.setTitleColor(.white, for: .normal)
         self.chooseVideoBtn1.backgroundColor = .red
@@ -40,7 +51,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.chooseVideoBtn1.tag = 0
         self.chooseVideoBtn1.addTarget(self, action: #selector(self.btnClicked(sender:)), for: .touchUpInside)
         
-        self.chooseVideoBtn2 = UIButton(frame: CGRect(x: 0, y: 100, width: self.view.bounds.width, height: CGFloat(40)))
+        self.chooseVideoBtn2 = UIButton(frame: CGRect(x: 0, y: 100, width: self.view.bounds.width, height: heights))
         self.chooseVideoBtn2.setTitle("Choose Front video", for: .normal)
         self.chooseVideoBtn2.setTitleColor(.white, for: .normal)
         self.chooseVideoBtn2.backgroundColor = .blue
@@ -48,22 +59,54 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.chooseVideoBtn2.tag = 1
         self.chooseVideoBtn2.addTarget(self, action: #selector(self.btnClicked(sender:)), for: .touchUpInside)
         
-        self.mergeBtn = UIButton(frame: CGRect(x: 0, y: 140, width: self.view.bounds.width, height: CGFloat(40)))
+        self.mergeBtn = UIButton(frame: CGRect(x: 0, y: 140, width: self.view.bounds.width, height: heights))
         self.mergeBtn.setTitle("!MERGE!", for: .normal)
         self.mergeBtn.setTitleColor(.white, for: .normal)
         self.mergeBtn.backgroundColor = .black
         self.view.addSubview(self.mergeBtn)
         self.mergeBtn.addTarget(self, action: #selector(self.mergeBtnClicked(sender:)), for: .touchUpInside)
         
+        self.scaleTxtField = UITextField(frame: CGRect(x: 0, y: self.mergeBtn.frame.origin.y + heights, width: self.view.bounds.width / 3, height: heights))
+        self.scaleTxtField.placeholder = "Scale"
+        self.scaleTxtField.tag = 0
+        self.view.addSubview(self.scaleTxtField)
+        self.scaleTxtField.keyboardType = .decimalPad
+        self.scaleTxtField.textAlignment = .center
         
-        self.cropBtn = UIButton(frame: CGRect(x: 0, y: 180, width: self.view.bounds.width, height: CGFloat(40)))
-        self.cropBtn.setTitle("CROP", for: .normal)
-        self.cropBtn.setTitleColor(.white, for: .normal)
-        self.cropBtn.backgroundColor = UIColor.darkGray
-        self.view.addSubview(self.cropBtn)
-        self.cropBtn.addTarget(self, action: #selector(self.cropBtnClicked(sender:)), for: .touchUpInside)
+        self.originXTxtField = UITextField(frame: CGRect(x: self.view.bounds.width / 3 , y: self.scaleTxtField.frame.origin.y, width: self.view.bounds.width / 3, height: heights))
+        self.originXTxtField.placeholder = "X"
+        self.originXTxtField.tag = 1
+        self.view.addSubview(self.originXTxtField)
+        self.originXTxtField.keyboardType = .decimalPad
+        self.originXTxtField.textAlignment = .center
+        
+        self.originYTxtField = UITextField(frame: CGRect(x: self.view.bounds.width * (2/3) , y: self.originXTxtField.frame.origin.y, width: self.view.bounds.width / 3, height: heights))
+        self.originYTxtField.placeholder = "Y"
+        self.originYTxtField.tag = 2
+        self.view.addSubview(self.originYTxtField)
+        self.originYTxtField.keyboardType = .decimalPad
+        self.originYTxtField.textAlignment = .center
     }
     
+    
+//    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool
+//    {
+//        switch textField.tag
+//        {
+//        case 0: //  scale
+//
+//
+//        case 1: // origin x
+//
+//        case 2 : //origin y
+//
+//
+//        default:
+//            print("shouldn't get here!")
+//            break;
+//
+//        }
+//    }
     override func didReceiveMemoryWarning()
     {
         super.didReceiveMemoryWarning()
@@ -71,16 +114,16 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
     }
     
     
-    @objc func cropBtnClicked(sender : UIButton)
-    {
-        VideoProcessor.cropSquareVideo(with: self.url1) { (croppedUrl) in
-            
-            if let _url = croppedUrl
-            {
-                self.playWith(url: _url)
-            }
-        }
-    }
+//    @objc func cropBtnClicked(sender : UIButton)
+//    {
+//        self.videoProccessor.cropSquareVideo(with: self.url1, makeItCircle: false) { (croppedUrl) in
+//            if let _url = croppedUrl
+//            {
+//                self.playWith(url: _url)
+//            }
+//        }
+//
+//    }
     
     @objc func btnClicked(sender : UIButton)
     {
@@ -98,17 +141,35 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
     @objc func mergeBtnClicked(sender : UIButton)
     {
         print("merging...")
-        VideoProcessor.mergeBgVideo(self.url1, withForeGroundVideo: self.url2) { (mergedUrl) in
-            
-            print("finished merging with link :\(mergedUrl)")
-            
-            if let _mergedLink = mergedUrl
+        
+        self.originYTxtField.resignFirstResponder()
+        self.originXTxtField.resignFirstResponder()
+        self.scaleTxtField.resignFirstResponder()
+        
+        if let _scale = NumberFormatter().number(from: self.scaleTxtField.text ?? "")?.floatValue
+        {
+            if let _originX = NumberFormatter().number(from: self.originXTxtField.text ?? "")?.floatValue
             {
-                self.playWith(url: _mergedLink)
+                if let _originY = NumberFormatter().number(from: self.originYTxtField.text ?? "")?.floatValue
+                {
+                    self.videoProccessor.mergeBgVideo(self.url1,
+                                                      withForeGroundVideo: self.url2,
+                                                      frontVideoSize: CGSize(width: CGFloat(_scale * 720), height: CGFloat(_scale * 720)),
+                                                      frontOrigin: CGPoint(x: Int(_originX), y: Int(_originY))) { (mergedUrl) in
+                                                        if let _mergedLink = mergedUrl
+                                                        {
+                                                            print("finished merging with link :\(_mergedLink)")
+                                                            self.playWith(url: _mergedLink)
+                                                        }
+                    }
+
+                }
             }
-            
-            
         }
+        
+        
+        
+        
     }
     
     
@@ -123,18 +184,13 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
             
             self.videoLayer.frame = CGRect(x: 0, y: 220, width: self.view.bounds.width, height: self.view.bounds.width)
             
-            
-            
             self.videoLayer!.videoGravity = AVLayerVideoGravity.resize
             self.view.layer.addSublayer(self.videoLayer)
             
             self.player.play()
             
             NotificationCenter.default.addObserver(self, selector: #selector(self.videoPlayerFinishedPlaying(_:)), name: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: self.player.currentItem!)
-            
         }
-        
-        
     }
     
     @objc func videoPlayerFinishedPlaying(_ notification : Foundation.Notification)

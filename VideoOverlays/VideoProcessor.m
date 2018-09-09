@@ -12,28 +12,40 @@
 
 @interface VideoProcessor()
 
+@property(nonatomic) CGSize frontSize;
+@property(nonatomic) CGPoint frontOrigin;
+
 
 @end
 
 @implementation VideoProcessor
 
 
-
-
-
-+ (void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo completion:(void(^)(NSURL*))callback
+- (instancetype)init
 {
+    self = [super init];
+    if(self)
+    {
+        _frontSize = CGSizeZero;
+    }
+    return self;
+}
+
+
+
+
+-(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo frontVideoSize:(CGSize)frontSize frontOrigin:(CGPoint)frontOrigin completion:(void(^)(NSURL*))callback
+{
+    _frontSize = frontSize;
+    _frontOrigin = frontOrigin;
+    
     __block NSURL * bgSquareVideoUrl;
     __block NSURL * foreGroundSquareVideoUrl;
     dispatch_group_t croppVideosGroup = dispatch_group_create();
     
-    
-    
-    
     NSLog(@"cropping bg video...");
     dispatch_group_enter(croppVideosGroup);
-    [VideoProcessor cropSquareVideoWithUrl:bgVideo makeItCircle:NO completionHandler:^(NSURL* croppedBgUrl) {
-        
+    [self cropSquareVideoWithUrl:bgVideo makeItCircle:NO completionHandler:^(NSURL* croppedBgUrl) {
         
         bgSquareVideoUrl = croppedBgUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -42,15 +54,12 @@
         {
             NSLog(@"cropping bg video finished");
         }
-        
-        
     }];
-    
     
     
     NSLog(@"cropping foreG video ...");
     dispatch_group_enter(croppVideosGroup);
-    [VideoProcessor cropSquareVideoWithUrl:foreGVideo makeItCircle:NO completionHandler:^(NSURL* croppedForeGUrl) {
+    [self cropSquareVideoWithUrl:foreGVideo makeItCircle:NO completionHandler:^(NSURL* croppedForeGUrl) {
         
         foreGroundSquareVideoUrl = croppedForeGUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -75,7 +84,6 @@
             return;
         }
         
-        
         NSLog(@"merging the two cropped videos");
         
         AVAsset* frontAsset = [AVAsset assetWithURL:foreGroundSquareVideoUrl];
@@ -83,37 +91,44 @@
         
         AVMutableComposition* mixComposition = [[AVMutableComposition alloc] init];
         
-        AVMutableCompositionTrack *frontTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
-        [frontTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration) ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
+        AVMutableCompositionTrack *frontVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+        [frontVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration) ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
         
-        AVMutableCompositionTrack *backTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
-        [backTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, backAsset.duration) ofTrack:[[backAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
+        
+//        AVMutableCompositionTrack *frontAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+//
+//        [frontAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration)
+//                            ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+//                             atTime:kCMTimeZero error:nil];
+
+        
+        AVMutableCompositionTrack *backVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+        [backVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, backAsset.duration) ofTrack:[[backAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
         
         AVMutableVideoCompositionInstruction * MainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
         //see what the duration will be
         MainInstruction.timeRange = CMTimeRangeMake(kCMTimeZero,frontAsset.duration);
         
-        AVMutableVideoCompositionLayerInstruction *frontLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:frontTrack];
+        AVMutableVideoCompositionLayerInstruction *frontLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:frontVideoTrack];
         frontLayerInstruction.trackID = 1;
-        CGAffineTransform frontScale = CGAffineTransformMakeScale(0.33f,0.33f);
-        CGAffineTransform frontMove = CGAffineTransformMakeTranslation(6,6);
-        [VideoProcessor fixOrientation:frontLayerInstruction withAsset:frontAsset withTransform:(CGAffineTransformConcat(frontScale, frontMove))];
+        [self fixOrientation:frontLayerInstruction withAsset:frontAsset];// withTransform:(CGAffineTransformConcat(frontScale, frontMove))];
         
-        AVMutableVideoCompositionLayerInstruction *backLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:backTrack];
+        AVMutableVideoCompositionLayerInstruction *backLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:backVideoTrack];
         backLayerInstruction.trackID = 2;
-        [VideoProcessor fixOrientation:backLayerInstruction withAsset:backAsset];
-        
+        [self fixOrientation:backLayerInstruction withAsset:backAsset];
         
         MainInstruction.layerInstructions = [NSArray arrayWithObjects:frontLayerInstruction,backLayerInstruction,nil];;
         
         AVMutableVideoComposition *MainCompositionInst = [AVMutableVideoComposition videoComposition];
         MainCompositionInst.instructions = [NSArray arrayWithObject:MainInstruction];
-        MainCompositionInst.customVideoCompositorClass = [CustomVideoCompositor class];
-        MainCompositionInst.frameDuration = CMTimeMake(1, 30);
-        MainCompositionInst.renderSize = backTrack.naturalSize;
         
-        NSString *myPathDocs = [VideoProcessor getFilePathWithExtension:@"mp4"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
+        MainCompositionInst.customVideoCompositorClass = [MuzeCircleMergeVideoComposer class];
+        
+        MainCompositionInst.frameDuration = CMTimeMake(1, 30);
+        MainCompositionInst.renderSize = backVideoTrack.naturalSize;
+        
+        NSString *myPathDocs = [self getFilePathWithExtension:@"mp4"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
         
         if([[NSFileManager defaultManager] fileExistsAtPath:myPathDocs])
         {
@@ -125,6 +140,10 @@
         AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetHighestQuality];
         exporter.outputURL=url;
         exporter.videoComposition = MainCompositionInst;
+        
+        MuzeCircleMergeVideoComposer* compositor = (MuzeCircleMergeVideoComposer*) exporter.customVideoCompositor;
+        compositor.delegate = self;
+        
         exporter.outputFileType = AVFileTypeMPEG4;
         
         [exporter exportAsynchronouslyWithCompletionHandler:^
@@ -142,18 +161,11 @@
                  callback(url);
              });
          }];
-        
     });
-    
-    
-    
-    
-    
-    
 }
 
 
-+(void)fixOrientation:(AVMutableVideoCompositionLayerInstruction*)videolayerInstruction withAsset:(AVAsset*)videoAsset withTransform:(CGAffineTransform)trans
+-(void)fixOrientation:(AVMutableVideoCompositionLayerInstruction*)videolayerInstruction withAsset:(AVAsset*)videoAsset withTransform:(CGAffineTransform)trans
 {
     AVAssetTrack *videoAssetTrack = [[videoAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
     //    UIImageOrientation videoAssetOrientation_  = UIImageOrientationUp;
@@ -181,13 +193,13 @@
     [videolayerInstruction setTransform:CGAffineTransformConcat(videoAssetTrack.preferredTransform,trans) atTime:kCMTimeZero];
 }
 
-+(void)fixOrientation:(AVMutableVideoCompositionLayerInstruction*)videolayerInstruction withAsset:(AVAsset*)videoAsset
+-(void)fixOrientation:(AVMutableVideoCompositionLayerInstruction*)videolayerInstruction withAsset:(AVAsset*)videoAsset
 {
     AVAssetTrack *videoAssetTrack = [[videoAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
     [videolayerInstruction setTransform:videoAssetTrack.preferredTransform atTime:kCMTimeZero];
 }
 
-+(void)cropAsCircleWithComposistion:(AVMutableVideoComposition*)composition size:(CGSize)size
+-(void)cropAsCircleWithComposistion:(AVMutableVideoComposition*)composition size:(CGSize)size
 {
     // 1 - Layer setup
     CALayer *parentLayer = [CALayer layer];
@@ -212,9 +224,9 @@
 }
 
 
-+(void)cropSquareVideoWithUrl:(NSURL*)url makeItCircle:(BOOL)isCricle completionHandler:(void(^)(NSURL*))callback
+-(void)cropSquareVideoWithUrl:(NSURL*)url makeItCircle:(BOOL)isCricle completionHandler:(void(^)(NSURL*))callback
 {
-    NSString* outputPath = [VideoProcessor getFilePathWithExtension:@"mp4"];///[docFolder stringByAppendingPathComponent:@"croppedVideo.mp4"];
+    NSString* outputPath = [self getFilePathWithExtension:@"mp4"];///[docFolder stringByAppendingPathComponent:@"croppedVideo.mp4"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:outputPath])
     {
         [[NSFileManager defaultManager] removeItemAtPath:outputPath error:nil];
@@ -237,7 +249,7 @@
     videoComposition.frameDuration = CMTimeMake(1, 30);
     if (isCricle)
     {
-        [VideoProcessor cropAsCircleWithComposistion:videoComposition size:videoComposition.renderSize];
+        [self cropAsCircleWithComposistion:videoComposition size:videoComposition.renderSize];
     }
     AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
     instruction.timeRange = CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(60, 30) );
@@ -256,26 +268,23 @@
     AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:asset presetName:AVAssetExportPresetHighestQuality] ;
     exporter.videoComposition = videoComposition;
     exporter.outputURL=[NSURL fileURLWithPath:outputPath];
-    exporter.outputFileType=AVFileTypeMPEG4;
+    exporter.outputFileType = AVFileTypeMPEG4;
     
     [exporter exportAsynchronouslyWithCompletionHandler:^(void){
         if(exporter.status == AVAssetExportSessionStatusCompleted)
         {
-            NSLog(@"cropping completed");
             callback(exporter.outputURL);
         }
         else
         {
             NSLog(@"error cropping video : %@", exporter.error);
             callback(NULL);
-            
         }
-        
     }];
 }
 
 
-+(NSString*)getFilePathWithExtension:(NSString*)extension
+-(NSString*)getFilePathWithExtension:(NSString*)extension
 {
     NSString* docFolder = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
     double date = round([[NSDate date] timeIntervalSince1970]) * 1000;
@@ -289,6 +298,15 @@
 }
 
 
+- (CGSize)customVideoCompositorDelegateGetFrontSize
+{
+    return _frontSize;
+}
+
+- (CGPoint)customVideoCompositorDelegateGetOrigin
+{
+    return _frontOrigin;
+}
 @end
 
 
