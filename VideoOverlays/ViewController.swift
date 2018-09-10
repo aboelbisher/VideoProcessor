@@ -78,7 +78,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.scaleTxtField.keyboardType = .decimalPad
         self.scaleTxtField.textAlignment = .center
         
-        self.scaleTxtField.text = "0.4"
+//        self.scaleTxtField.text = "0.4"
         
         self.originXTxtField = UITextField(frame: CGRect(x: self.view.bounds.width / 3 , y: self.scaleTxtField.frame.origin.y, width: self.view.bounds.width / 3, height: heights))
         self.originXTxtField.placeholder = "X"
@@ -86,7 +86,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.view.addSubview(self.originXTxtField)
         self.originXTxtField.keyboardType = .decimalPad
         self.originXTxtField.textAlignment = .center
-        self.originXTxtField.text = "30"
+//        self.originXTxtField.text = "30"
         
         self.originYTxtField = UITextField(frame: CGRect(x: self.view.bounds.width * (2/3) , y: self.originXTxtField.frame.origin.y, width: self.view.bounds.width / 3, height: heights))
         self.originYTxtField.placeholder = "Y"
@@ -94,7 +94,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.view.addSubview(self.originYTxtField)
         self.originYTxtField.keyboardType = .decimalPad
         self.originYTxtField.textAlignment = .center
-        self.originYTxtField.text = "30"
+//        self.originYTxtField.text = "30"
         
         
         

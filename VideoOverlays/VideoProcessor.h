@@ -25,6 +25,10 @@
              maskImg:(UIImage*)maskImg
           completion:(void(^)(NSURL*))callback;
 
+-(void)repeatVideo:(NSURL*) url mustBeVideoTime:(CMTime)mustBeTime completionHandler:(void(^)(NSURL*))callback;
+-(void)cropSquareVideoWithUrl:(NSURL*)url completionHandler:(void(^)(NSURL*))callback;
+-(void)combineAssets:(NSArray*)assets completionHandler:(void(^)(NSURL*))callback;
+
 @property(nonatomic) Boolean shouldStroke;
 
 
