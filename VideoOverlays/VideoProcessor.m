@@ -15,7 +15,6 @@
 @property(nonatomic) CGSize frontSize;
 @property(nonatomic) CGPoint frontOrigin;
 
-
 @end
 
 @implementation VideoProcessor
@@ -44,9 +43,23 @@
     __block NSURL * foreGroundSquareVideoUrl;
     dispatch_group_t croppVideosGroup = dispatch_group_create();
     
+    
+    
+    float multiplyRatio = 1;
+    
+    
+    AVAsset* frontAsset = [AVAsset assetWithURL:foreGVideo];
+    AVAsset* bgAsset = [AVAsset assetWithURL:bgVideo];
+    
+    
+    if (CMTimeCompare(frontAsset.duration, bgAsset.duration) == 1)
+    {
+        multiplyRatio = CMTimeGetSeconds(frontAsset.duration) / CMTimeGetSeconds(bgAsset.duration);
+    }
+    
     NSLog(@"cropping bg video...");
     dispatch_group_enter(croppVideosGroup);
-    [self cropSquareVideoWithUrl:bgVideo completionHandler:^(NSURL* croppedBgUrl) {
+    [self cropSquareVideoWithUrl:bgVideo extendTimes:multiplyRatio  completionHandler:^(NSURL* croppedBgUrl) {
         
         bgSquareVideoUrl = croppedBgUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -58,9 +71,11 @@
     }];
     
     
+   
+    
     NSLog(@"cropping foreG video ...");
     dispatch_group_enter(croppVideosGroup);
-    [self cropSquareVideoWithUrl:foreGVideo completionHandler:^(NSURL* croppedForeGUrl) {
+    [self cropSquareVideoWithUrl:foreGVideo extendTimes : multiplyRatio completionHandler:^(NSURL* croppedForeGUrl) {
         
         foreGroundSquareVideoUrl = croppedForeGUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -86,13 +101,11 @@
         }
         
         
+        
         NSLog(@"merging the two cropped videos");
         
         AVAsset* frontAsset = [AVAsset assetWithURL:foreGroundSquareVideoUrl];
         AVAsset* backAsset = [AVAsset assetWithURL:bgSquareVideoUrl];
-        
-        
-
         
         AVMutableComposition* mixComposition = [[AVMutableComposition alloc] init];
         
@@ -110,8 +123,6 @@
                                   atTime:kCMTimeZero error:nil];
         
         
-        
-        
         AVMutableVideoCompositionInstruction * mainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
         //see what the duration will be
@@ -119,7 +130,7 @@
         
         AVMutableVideoCompositionLayerInstruction *frontLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:frontVideoTrack];
         frontLayerInstruction.trackID = 1;
-        [self fixOrientation:frontLayerInstruction withAsset:frontAsset];// withTransform:(CGAffineTransformConcat(frontScale, frontMove))];
+        [self fixOrientation:frontLayerInstruction withAsset:frontAsset];
         
         AVMutableVideoCompositionLayerInstruction *backLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:backVideoTrack];
         backLayerInstruction.trackID = 2;
@@ -133,7 +144,7 @@
         MainCompositionInst.frameDuration = CMTimeMake(1, 30);
         MainCompositionInst.renderSize = backVideoTrack.naturalSize;
         
-        NSString *myPathDocs = [self getFilePathWithExtension:@"mp4"];//[documentsDirectory stringByAppendingPathComponent:@"overlapVideo.mp4"];
+        NSString *myPathDocs = [self getFilePathWithExtension:@"mp4"];
         
         if([[NSFileManager defaultManager] fileExistsAtPath:myPathDocs])
         {
@@ -150,7 +161,6 @@
         
         if (soundUrl != nil)
         {
-            //            NSURL* soundUrl = [NSBundle.mainBundle URLForResource:@"sound" withExtension:@"mp3"];
             AVAsset* soundAsset = [AVAsset assetWithURL:soundUrl];
             
             AVMutableCompositionTrack *soundTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
@@ -247,9 +257,9 @@
 //}
 
 
--(void)cropSquareVideoWithUrl:(NSURL*)url completionHandler:(void(^)(NSURL*))callback
+-(void)cropSquareVideoWithUrl:(NSURL*)url extendTimes:(float)extendTimes completionHandler:(void(^)(NSURL*))callback
 {
-    NSString* outputPath = [self getFilePathWithExtension:@"mp4"];///[docFolder stringByAppendingPathComponent:@"croppedVideo.mp4"];
+    NSString* outputPath = [self getFilePathWithExtension:@"mp4"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:outputPath])
     {
         [[NSFileManager defaultManager] removeItemAtPath:outputPath error:nil];
@@ -260,19 +270,30 @@
     
     AVMutableComposition *composition = [AVMutableComposition composition];
     
+    CMTime fullDuration = CMTimeMultiplyByFloat64(asset.duration, extendTimes);
+    
+
+    if (extendTimes > 1)
+    {
+        
+    }
+    else if (extendTimes < 1)
+    {
+        
+    }
+
+    
     AVMutableCompositionTrack *videoTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
     [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
                         ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
                          atTime:kCMTimeZero error:nil];
+    
+    
 
-    
-    
-    
     AVMutableCompositionTrack *audioTrack = [composition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
     [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
                         ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
                          atTime:kCMTimeZero error:nil];
-
     
     // input clip
     AVAssetTrack *clipVideoTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
@@ -282,10 +303,6 @@
     videoComposition.renderSize = CGSizeMake(clipVideoTrack.naturalSize.height, clipVideoTrack.naturalSize.height);
     
     videoComposition.frameDuration = CMTimeMake(1, 30);
-//    if (isCricle)
-//    {
-//        [self cropAsCircleWithComposistion:videoComposition size:videoComposition.renderSize];
-//    }
     AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
     instruction.timeRange = CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(60, 30) );
     
