@@ -100,6 +100,12 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
                                      y: self.scaleTxtField.frame.origin.y + self.scaleTxtField.frame.size.height,
                                      width: self.switcher.frame.size.width, height: self.switcher.frame.size.height)
         self.view.addSubview(self.switcher)
+        
+//        let url = Bundle.main.url(forResource: "sound", withExtension: "mp3")
+//
+//
+//        self.player = AVPlayer(url: url!)
+//        self.player.play()
     }
     
     
@@ -167,17 +173,24 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
                 if let _originY = NumberFormatter().number(from: self.originYTxtField.text ?? "")?.floatValue
                 {
                     self.videoProccessor.shouldStroke = self.switcher.isOn
-
+                    
+                    
+                    let soundUrl = Bundle.main.url(forResource: "sound", withExtension: "mp3")
+                    
                     self.videoProccessor.mergeBgVideo(self.url1,
                                                       withForeGroundVideo: self.url2,
                                                       frontVideoSize: CGSize(width: CGFloat(_scale * 720), height: CGFloat(_scale * 720)),
-                                                      frontOrigin: CGPoint(x: Int(_originX), y: Int(_originY))) { (mergedUrl) in
+                                                      frontOrigin: CGPoint(x: Int(_originX), y: Int(_originY)),
+                                                      musicSound: soundUrl,
+                                                      volume: 0.05) { (mergedUrl) in
                                                         if let _mergedLink = mergedUrl
                                                         {
                                                             print("finished merging with link :\(_mergedLink)")
                                                             self.playWith(url: _mergedLink)
                                                         }
                     }
+
+
 
                 }
             }
@@ -204,6 +217,8 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
             self.view.layer.addSublayer(self.videoLayer)
             
             self.player.play()
+            
+            
             
             NotificationCenter.default.addObserver(self, selector: #selector(self.videoPlayerFinishedPlaying(_:)), name: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: self.player.currentItem!)
         }

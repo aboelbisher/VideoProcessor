@@ -35,7 +35,7 @@
 
 
 
--(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo frontVideoSize:(CGSize)frontSize frontOrigin:(CGPoint)frontOrigin completion:(void(^)(NSURL*))callback
+-(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo frontVideoSize:(CGSize)frontSize frontOrigin:(CGPoint)frontOrigin musicSoundUrl:(NSURL*)soundUrl volume:(float)soundUrlVolume completion:(void(^)(NSURL*))callback
 {
     _frontSize = frontSize;
     _frontOrigin = frontOrigin;
@@ -86,13 +86,13 @@
         }
         
         
-//        callback(foreGroundSquareVideoUrl);
-//        return;
-        
         NSLog(@"merging the two cropped videos");
         
         AVAsset* frontAsset = [AVAsset assetWithURL:foreGroundSquareVideoUrl];
         AVAsset* backAsset = [AVAsset assetWithURL:bgSquareVideoUrl];
+        
+        
+
         
         AVMutableComposition* mixComposition = [[AVMutableComposition alloc] init];
         
@@ -101,16 +101,16 @@
                                  ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
                                   atTime:kCMTimeZero error:nil];
         
-        
         AVMutableCompositionTrack *backVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
         [backVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, backAsset.duration) ofTrack:[[backAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:kCMTimeZero error:nil];
-        
         
         AVMutableCompositionTrack *frontAudioTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
         [frontAudioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration)
                                  ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
                                   atTime:kCMTimeZero error:nil];
-
+        
+        
+        
         
         AVMutableVideoCompositionInstruction * mainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
@@ -141,15 +141,33 @@
         }
         
         NSURL *url = [NSURL fileURLWithPath:myPathDocs];
-        
         AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPresetHighestQuality];
         exporter.outputURL=url;
         exporter.videoComposition = MainCompositionInst;
-        
         MuzeCircleMergeVideoComposer* compositor = (MuzeCircleMergeVideoComposer*) exporter.customVideoCompositor;
         compositor.delegate = self;
-        
         exporter.outputFileType = AVFileTypeMPEG4;
+        
+        if (soundUrl != nil)
+        {
+            //            NSURL* soundUrl = [NSBundle.mainBundle URLForResource:@"sound" withExtension:@"mp3"];
+            AVAsset* soundAsset = [AVAsset assetWithURL:soundUrl];
+            
+            AVMutableCompositionTrack *soundTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+            [soundTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, frontAsset.duration)
+                                ofTrack:[[soundAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                                 atTime:kCMTimeZero error:nil];
+            
+            // Set the parameters of the mix being applied
+            AVMutableAudioMixInputParameters *mixParameters = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:soundTrack];
+            [mixParameters setVolume:0.05 atTime:kCMTimeZero];
+            // Add the parameters to the audio mix
+            AVMutableAudioMix *audioMix = [AVMutableAudioMix audioMix];
+            [audioMix setInputParameters:@[mixParameters]];
+            exporter.audioMix = audioMix;
+            
+        }
+        
         
         [exporter exportAsynchronouslyWithCompletionHandler:^
          {
