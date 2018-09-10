@@ -45,37 +45,56 @@
     
     
     
-    float multiplyRatio = 1;
     
     
     AVAsset* frontAsset = [AVAsset assetWithURL:foreGVideo];
     AVAsset* bgAsset = [AVAsset assetWithURL:bgVideo];
     
     
-    if (CMTimeCompare(frontAsset.duration, bgAsset.duration) == 1)
-    {
-        multiplyRatio = CMTimeGetSeconds(frontAsset.duration) / CMTimeGetSeconds(bgAsset.duration);
-    }
+//    NSArray * arr = [NSArray arrayWithObjects: frontAsset, frontAsset , nil];
+//    dispatch_group_enter(croppVideosGroup);
+//    [self combineAssets:arr completionHandler:^(NSURL* finalUrl) {
+//
+//        dispatch_group_leave(croppVideosGroup);
+//
+//        if (finalUrl != NULL)
+//        {
+//            callback(finalUrl);
+//            NSLog(@"merging finished");
+//        }
+//
+//    }];
+//    return
     
     NSLog(@"cropping bg video...");
     dispatch_group_enter(croppVideosGroup);
-    [self cropSquareVideoWithUrl:bgVideo extendTimes:multiplyRatio  completionHandler:^(NSURL* croppedBgUrl) {
-        
-        bgSquareVideoUrl = croppedBgUrl;
-        dispatch_group_leave(croppVideosGroup);
+    [self cropSquareVideoWithUrl:bgVideo completionHandler:^(NSURL* croppedBgUrl) {
         
         if (croppedBgUrl != NULL)
         {
             NSLog(@"cropping bg video finished");
+
+            [self repeatVideo:croppedBgUrl mustBeVideoTime:frontAsset.duration completionHandler:^(NSURL * repeatedCroppedVideo) {
+                
+                bgSquareVideoUrl = repeatedCroppedVideo;
+                dispatch_group_leave(croppVideosGroup);
+
+                if (repeatedCroppedVideo != NULL)
+                {
+                    NSLog(@"repeated bg video finished");
+                }
+            }];
+        }
+        else
+        {
+            dispatch_group_leave(croppVideosGroup);
         }
     }];
-    
-    
-   
+
     
     NSLog(@"cropping foreG video ...");
     dispatch_group_enter(croppVideosGroup);
-    [self cropSquareVideoWithUrl:foreGVideo extendTimes : multiplyRatio completionHandler:^(NSURL* croppedForeGUrl) {
+    [self cropSquareVideoWithUrl:foreGVideo  completionHandler:^(NSURL* croppedForeGUrl) {
         
         foreGroundSquareVideoUrl = croppedForeGUrl;
         dispatch_group_leave(croppVideosGroup);
@@ -100,10 +119,7 @@
             return;
         }
         
-        
-        
         NSLog(@"merging the two cropped videos");
-        
         AVAsset* frontAsset = [AVAsset assetWithURL:foreGroundSquareVideoUrl];
         AVAsset* backAsset = [AVAsset assetWithURL:bgSquareVideoUrl];
         
@@ -125,7 +141,7 @@
         
         AVMutableVideoCompositionInstruction * mainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
-        //see what the duration will be
+//        //see what the duration will be
         mainInstruction.timeRange = CMTimeRangeMake(kCMTimeZero,frontAsset.duration);
         
         AVMutableVideoCompositionLayerInstruction *frontLayerInstruction = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:frontVideoTrack];
@@ -257,7 +273,7 @@
 //}
 
 
--(void)cropSquareVideoWithUrl:(NSURL*)url extendTimes:(float)extendTimes completionHandler:(void(^)(NSURL*))callback
+-(void)cropSquareVideoWithUrl:(NSURL*)url completionHandler:(void(^)(NSURL*))callback
 {
     NSString* outputPath = [self getFilePathWithExtension:@"mp4"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:outputPath])
@@ -267,36 +283,21 @@
     
     // input file
     AVAsset* asset = [AVAsset assetWithURL:url];
-    
     AVMutableComposition *composition = [AVMutableComposition composition];
-    
-    CMTime fullDuration = CMTimeMultiplyByFloat64(asset.duration, extendTimes);
-    
-
-    if (extendTimes > 1)
-    {
-        
-    }
-    else if (extendTimes < 1)
-    {
-        
-    }
-
-    
+    // input clip
+    AVAssetTrack *clipVideoTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
     AVMutableCompositionTrack *videoTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
-    [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
+    AVMutableCompositionTrack *audioTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+
+
+    [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero,asset.duration )
                         ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
                          atTime:kCMTimeZero error:nil];
     
-    
-
-    AVMutableCompositionTrack *audioTrack = [composition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
     [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
                         ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
                          atTime:kCMTimeZero error:nil];
     
-    // input clip
-    AVAssetTrack *clipVideoTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
     
     // make it square
     AVMutableVideoComposition* videoComposition = [AVMutableVideoComposition videoComposition];
@@ -304,7 +305,7 @@
     
     videoComposition.frameDuration = CMTimeMake(1, 30);
     AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
-    instruction.timeRange = CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(60, 30) );
+    instruction.timeRange = CMTimeRangeMake(kCMTimeZero, asset.duration);
     
     // rotate to portrait
     AVMutableVideoCompositionLayerInstruction* transformer = [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:clipVideoTrack];
@@ -315,6 +316,7 @@
     [transformer setTransform:finalTransform atTime:kCMTimeZero];
     instruction.layerInstructions = [NSArray arrayWithObject:transformer];
     videoComposition.instructions = [NSArray arrayWithObject: instruction];
+    
     
     // export
     AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:asset presetName:AVAssetExportPresetHighestQuality] ;
@@ -364,7 +366,215 @@
 {
     return _shouldStroke;
 }
+
+
+
+
+//AVMutableComposition *mixComposition = [AVMutableComposition composition];
+//AVMutableCompositionTrack *compositionTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+//NSError * error = nil;
+//NSMutableArray * timeRanges = [NSMutableArray arrayWithCapacity:videoClipPaths.count];
+//NSMutableArray * tracks = [NSMutableArray arrayWithCapacity:videoClipPaths.count];
+//for (int i=0; i<[videoClipPaths count]; i++) {
+//    AVURLAsset *assetClip = [videoClipPaths objectAtIndex:i];
+//    AVAssetTrack *clipVideoTrackB = [[assetClip tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
+//
+//    [timeRanges addObject:[NSValue valueWithCMTimeRange:CMTimeRangeMake(kCMTimeZero, assetClip.duration)]];
+//    [tracks addObject:clipVideoTrackB];
+//}
+//[compositionTrack insertTimeRanges:timeRanges ofTracks:tracks atTime:kCMTimeZero error:&error];
+//
+//AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPreset1280x720];
+//NSParameterAssert(exporter != nil);
+//NSArray *t;
+//NSString *u;
+//
+//t = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+//u = [t objectAtIndex:0];
+//NSString *finalPath = [u stringByAppendingPathComponent:@"final.mov"];
+//NSURL *lastURL = [NSURL fileURLWithPath:finalPath];
+//exporter.outputFileType = AVFileTypeQuickTimeMovie;
+//exporter.outputURL = lastURL;
+//[exporter exportAsynchronouslyWithCompletionHandler:^(void){
+//    switch (exporter.status) {
+//        case AVAssetExportSessionStatusFailed:
+//            NSLog(@"exporting failed");
+//            break;
+//        case AVAssetExportSessionStatusCompleted:
+//            NSLog(@"exporting completed");
+//            //UISaveVideoAtPathToSavedPhotosAlbum(filePath, self, nil, NULL);
+//            break;
+//        case AVAssetExportSessionStatusCancelled:
+//            NSLog(@"export cancelled");
+//            break;
+//    }
+//}];
+
+
+-(void)repeatVideo:(NSURL*) url mustBeVideoTime:(CMTime)mustBeTime completionHandler:(void(^)(NSURL*))callback
+{
+    NSString* outputPath = [self getFilePathWithExtension:@"mp4"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:outputPath])
+    {
+        [[NSFileManager defaultManager] removeItemAtPath:outputPath error:nil];
+    }
+    
+    // input file
+    AVAsset* asset = [AVAsset assetWithURL:url];
+    AVMutableComposition *composition = [AVMutableComposition composition];
+    
+    AVMutableCompositionTrack *videoTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+    AVMutableCompositionTrack *audioTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+
+    CMTime totalTime = kCMTimeZero;
+    
+    if (CMTimeCompare(mustBeTime, asset.duration) != 0) // diferrent
+    {
+        CMTime currentTime = kCMTimeZero;
+        
+        while(YES)
+        {
+            CMTime addedTime = asset.duration;
+            totalTime = CMTimeAdd(totalTime, addedTime);
+            if (CMTimeCompare(totalTime , mustBeTime) == 1 ) // totalTime > mustBeDuration
+            {
+                CMTime mustDeleteValue = CMTimeSubtract(totalTime , mustBeTime);
+                addedTime = CMTimeSubtract(asset.duration, mustDeleteValue);
+                totalTime = CMTimeSubtract(totalTime, mustDeleteValue);
+            }
+
+            [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero,addedTime )
+                                ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+                                 atTime:currentTime error:nil];
+
+            [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, addedTime)
+                                ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                                 atTime:currentTime error:nil];
+
+            currentTime = CMTimeAdd(currentTime, addedTime);
+
+            if  (CMTimeCompare(currentTime, mustBeTime) == 0)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        totalTime = asset.duration;
+        
+        [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero,asset.duration )
+                            ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+                             atTime:kCMTimeZero error:nil];
+        
+        [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, asset.duration)
+                            ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                             atTime:kCMTimeZero error:nil];
+    }
+    
+    
+    AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:composition presetName:AVAssetExportPresetHighestQuality];
+    
+    NSURL *outptVideoUrl = [NSURL fileURLWithPath:outputPath];
+    exporter.outputURL=outptVideoUrl;
+    exporter.outputFileType =AVFileTypeMPEG4;
+    exporter.shouldOptimizeForNetworkUse = YES;
+    [exporter exportAsynchronouslyWithCompletionHandler:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            if(exporter.status == AVAssetExportSessionStatusCompleted)
+            {
+                callback(outptVideoUrl);
+            }
+            else
+            {
+                NSLog(@"error merging video : %@", exporter.error);
+                callback(NULL);
+            }
+            
+        });
+    }];
+}
+
+
+-(void)combineAssets:(NSArray*)assets completionHandler:(void(^)(NSURL*))callback
+{
+    AVMutableComposition *mainComposition = [[AVMutableComposition alloc] init];
+    AVMutableCompositionTrack *compositionVideoTrack = [mainComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+
+    
+    AVMutableCompositionTrack *soundtrackTrack = [mainComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+    CMTime insertTime = kCMTimeZero;
+    
+    for (AVAsset *videoAsset in assets) {
+        
+        [compositionVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:[[videoAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] atTime:insertTime error:nil];
+        
+        [soundtrackTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, videoAsset.duration) ofTrack:[[videoAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0] atTime:insertTime error:nil];
+        
+        // Updating the insertTime for the next insert
+        insertTime = CMTimeAdd(insertTime, videoAsset.duration);
+    }
+    
+    NSString *myPathDocs = [self getFilePathWithExtension:@"mp4"];
+    if([[NSFileManager defaultManager] fileExistsAtPath:myPathDocs])
+    {
+        [[NSFileManager defaultManager] removeItemAtPath:myPathDocs error:nil];
+    }
+    
+    NSURL *outptVideoUrl = [NSURL fileURLWithPath:myPathDocs];
+    AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:mainComposition presetName:AVAssetExportPresetHighestQuality];
+    
+    // Setting attributes of the exporter
+    exporter.outputURL=outptVideoUrl;
+    exporter.outputFileType =AVFileTypeMPEG4;
+    exporter.shouldOptimizeForNetworkUse = YES;
+    [exporter exportAsynchronouslyWithCompletionHandler:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            if(exporter.status == AVAssetExportSessionStatusCompleted)
+            {
+                callback(outptVideoUrl);
+            }
+            else
+            {
+                NSLog(@"error merging video : %@", exporter.error);
+                callback(NULL);
+            }
+            
+        });
+    }];
+}
+
+
+
+
+
 @end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
