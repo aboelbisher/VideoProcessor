@@ -25,6 +25,8 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
     private var switcher : UISwitch!
     
     
+    private var alert : UIAlertController!
+    
     private var mergeBtn : UIButton!
     
     private var videoLayer : AVPlayerLayer!
@@ -44,7 +46,7 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         
         self.videoProccessor = VideoProcessor()
         
-        let heights = CGFloat(60)
+        let heights = CGFloat(40)
         
         self.chooseVideoBtn1 = UIButton(frame: CGRect(x: 0, y: 60, width: self.view.bounds.width, height: heights))
         self.chooseVideoBtn1.setTitle("Choose BackGround video", for: .normal)
@@ -93,6 +95,8 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.originYTxtField.keyboardType = .decimalPad
         self.originYTxtField.textAlignment = .center
         self.originYTxtField.text = "30"
+        
+        
         
         
         self.switcher = UISwitch()
@@ -166,6 +170,21 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
         self.originXTxtField.resignFirstResponder()
         self.scaleTxtField.resignFirstResponder()
         
+        
+        
+        let size = CGSize(width: 100, height: 100)
+        let spinnerHolder = UIView(frame: CGRect(x: self.view.bounds.width / 2 - size.width / 2 ,
+                                                 y: self.view.bounds.height / 2 - size.height / 2 ,
+                                                 width: size.width, height: size.height))
+        spinnerHolder.backgroundColor = UIColor.white
+        let spinner = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+        spinner.startAnimating()
+        spinnerHolder.addSubview(spinner)
+        spinner.center = spinnerHolder.center
+        self.view.addSubview(spinnerHolder)
+        
+        let currDate = NSDate()
+        
         if let _scale = NumberFormatter().number(from: self.scaleTxtField.text ?? "")?.floatValue
         {
             if let _originX = NumberFormatter().number(from: self.originXTxtField.text ?? "")?.floatValue
@@ -175,18 +194,40 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
                     self.videoProccessor.shouldStroke = self.switcher.isOn
                     
                     
+                    
                     let soundUrl = Bundle.main.url(forResource: "sound", withExtension: "mp3")
+                    
+                    
+                    
+                    let maskImg = UIImage(named: "blurcircle_inverted")
                     
                     self.videoProccessor.mergeBgVideo(self.url1,
                                                       withForeGroundVideo: self.url2,
                                                       frontVideoSize: CGSize(width: CGFloat(_scale * 720), height: CGFloat(_scale * 720)),
                                                       frontOrigin: CGPoint(x: Int(_originX), y: Int(_originY)),
                                                       musicSound: soundUrl,
-                                                      volume: 0.05) { (mergedUrl) in
+                                                      volume: 0.05,
+                                                      maskImg: maskImg ) { (mergedUrl) in
                                                         if let _mergedLink = mergedUrl
                                                         {
                                                             print("finished merging with link :\(_mergedLink)")
-                                                            self.playWith(url: _mergedLink)
+                                                            let diff = NSDate().timeIntervalSince(currDate as Date)
+                                                            
+                                                            DispatchQueue.main.async {
+                                                                
+                                                                spinnerHolder.removeFromSuperview()
+                                                                
+                                                                self.alert = UIAlertController(title: "it took :\(diff) seconds",
+                                                                    message: nil,
+                                                                    preferredStyle: UIAlertControllerStyle.alert)
+                                                                let ok = UIAlertAction(title: "OK", style: .cancel, handler: { (action) in})
+                                                                
+                                                                self.alert.addAction(ok)
+                                                                self.present(self.alert, animated: true, completion: {
+                                                                    self.playWith(url: _mergedLink)
+                                                                })
+                                                            }
+                                                            
                                                         }
                     }
 
@@ -226,10 +267,10 @@ class ViewController: UIViewController , UIImagePickerControllerDelegate, UINavi
     
     @objc func videoPlayerFinishedPlaying(_ notification : Foundation.Notification)
     {
-        if let item = notification.object as? AVPlayerItem
-        {
-            item.seek(to: kCMTimeZero)
-        }
+//        if let item = notification.object as? AVPlayerItem
+//        {
+//            item.seek(to: kCMTimeZero)
+//        }
     }
     
     

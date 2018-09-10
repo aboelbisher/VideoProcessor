@@ -54,14 +54,7 @@
 {
     CGImageRef frontImage = [self createSourceImageFromBuffer:front];
     
-//    CGImageRef frontRegularImg = [self createSourceImageFromBuffer:front];
-    
-    
-//    UIImage* maskImg = [MuzeCircleMergeVideoComposer gradientImageWithBounds:CGRectMake(0, 0, CGImageGetWidth(frontRegularImg) * 0.5, CGImageGetHeight(frontRegularImg) * 0.5)
-//                                                                      colors:[NSArray arrayWithObjects: UIColor.yellowColor , UIColor.clearColor, nil]]; //[UIImage imageNamed:@"triangleImg"];
-//    CGImageRef frontImage = [self getMaskedImageFromImg:frontRegularImg mask:maskImg.CGImage];
     CGImageRef backImage = [self createSourceImageFromBuffer:back];
-    
     size_t destwidth = CVPixelBufferGetWidth(destination);
     size_t destHeight = CVPixelBufferGetHeight(destination);
     
@@ -70,15 +63,12 @@
     CGPoint elipseTranslatedOrigin = [self translatePoint:elipseUntraslatedOrigin destinationSize:CGSizeMake(destwidth, destHeight) frontImageSize:CGSizeMake(frontSize.width, frontSize.height)];
     
     
-    
     CGRect elipseFrame = CGRectMake(elipseTranslatedOrigin.x, elipseTranslatedOrigin.y, frontSize.width, frontSize.height);
-//    CGRect elipseFrame = CGRectMake(0, 0, destwidth, destHeight);
 
 
     CGRect frame = CGRectMake(0, 0, destwidth, destHeight);
     CGContextRef gc = CGBitmapContextCreate(CVPixelBufferGetBaseAddress(destination), destwidth, destHeight, 8, CVPixelBufferGetBytesPerRow(destination), CGImageGetColorSpace(backImage), CGImageGetBitmapInfo(backImage));
     CGContextDrawImage(gc, frame, backImage);
-    
     
     if([[self delegate] customVideoCompositorDelegateShouldStrokeFrontCircle])
     {
@@ -88,15 +78,18 @@
     }
     
     
-    CGContextBeginPath(gc);
-    CGContextAddEllipseInRect(gc, elipseFrame);
-    CGContextClip(gc);
+    CGImageRef maskPtr = [[self delegate] customVideoCompositorDelegateGetMaskImg];
+    if (maskPtr != NULL)
+    {
+        CGContextClipToMask(gc, elipseFrame, maskPtr);
+    }
+    else
+    {
+        CGContextBeginPath(gc);
+        CGContextAddEllipseInRect(gc, elipseFrame);
+        CGContextClip(gc);
+    }
     CGContextDrawImage(gc, elipseFrame, frontImage);
-    
-    
-    
-
-
     CGContextRelease(gc);
 }
 

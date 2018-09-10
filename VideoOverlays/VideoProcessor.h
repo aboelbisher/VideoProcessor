@@ -17,7 +17,13 @@
 
 - (instancetype)init;
 
--(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo frontVideoSize:(CGSize)frontSize frontOrigin:(CGPoint)frontOrigin musicSoundUrl:(NSURL*)soundUrl volume:(float)soundUrlVolume completion:(void(^)(NSURL*))callback;
+-(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo
+      frontVideoSize:(CGSize)frontSize
+         frontOrigin:(CGPoint)frontOrigin
+       musicSoundUrl:(NSURL*)soundUrl
+              volume:(float)soundVolume
+             maskImg:(UIImage*)maskImg
+          completion:(void(^)(NSURL*))callback;
 
 @property(nonatomic) Boolean shouldStroke;
 

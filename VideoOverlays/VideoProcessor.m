@@ -14,6 +14,8 @@
 
 @property(nonatomic) CGSize frontSize;
 @property(nonatomic) CGPoint frontOrigin;
+@property(nonatomic) UIImage* maskImg;
+
 
 @end
 
@@ -34,37 +36,24 @@
 
 
 
--(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo frontVideoSize:(CGSize)frontSize frontOrigin:(CGPoint)frontOrigin musicSoundUrl:(NSURL*)soundUrl volume:(float)soundUrlVolume completion:(void(^)(NSURL*))callback
+-(void) mergeBgVideo:(NSURL*)bgVideo withForeGroundVideo:(NSURL*)foreGVideo
+      frontVideoSize:(CGSize)frontSize
+         frontOrigin:(CGPoint)frontOrigin
+       musicSoundUrl:(NSURL*)soundUrl
+              volume:(float)soundVolume
+             maskImg:(UIImage*)maskImg
+          completion:(void(^)(NSURL*))callback
 {
     _frontSize = frontSize;
     _frontOrigin = frontOrigin;
+    _maskImg = maskImg;
     
     __block NSURL * bgSquareVideoUrl;
     __block NSURL * foreGroundSquareVideoUrl;
     dispatch_group_t croppVideosGroup = dispatch_group_create();
     
-    
-    
-    
-    
     AVAsset* frontAsset = [AVAsset assetWithURL:foreGVideo];
-    AVAsset* bgAsset = [AVAsset assetWithURL:bgVideo];
-    
-    
-//    NSArray * arr = [NSArray arrayWithObjects: frontAsset, frontAsset , nil];
-//    dispatch_group_enter(croppVideosGroup);
-//    [self combineAssets:arr completionHandler:^(NSURL* finalUrl) {
-//
-//        dispatch_group_leave(croppVideosGroup);
-//
-//        if (finalUrl != NULL)
-//        {
-//            callback(finalUrl);
-//            NSLog(@"merging finished");
-//        }
-//
-//    }];
-//    return
+//    AVAsset* bgAsset = [AVAsset assetWithURL:bgVideo];
     
     NSLog(@"cropping bg video...");
     dispatch_group_enter(croppVideosGroup);
@@ -75,6 +64,12 @@
             NSLog(@"cropping bg video finished");
 
             [self repeatVideo:croppedBgUrl mustBeVideoTime:frontAsset.duration completionHandler:^(NSURL * repeatedCroppedVideo) {
+                
+                if([[NSFileManager defaultManager] fileExistsAtPath:croppedBgUrl.path])
+                {
+                    NSLog(@"deleting croppedBgUrl");
+                    [[NSFileManager defaultManager] removeItemAtPath:croppedBgUrl.path error:nil];
+                }
                 
                 bgSquareVideoUrl = repeatedCroppedVideo;
                 dispatch_group_leave(croppVideosGroup);
@@ -138,7 +133,6 @@
                                  ofTrack:[[frontAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
                                   atTime:kCMTimeZero error:nil];
         
-        
         AVMutableVideoCompositionInstruction * mainInstruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
         
 //        //see what the duration will be
@@ -186,7 +180,7 @@
             
             // Set the parameters of the mix being applied
             AVMutableAudioMixInputParameters *mixParameters = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:soundTrack];
-            [mixParameters setVolume:0.05 atTime:kCMTimeZero];
+            [mixParameters setVolume:soundVolume atTime:kCMTimeZero];
             // Add the parameters to the audio mix
             AVMutableAudioMix *audioMix = [AVMutableAudioMix audioMix];
             [audioMix setInputParameters:@[mixParameters]];
@@ -197,6 +191,19 @@
         
         [exporter exportAsynchronouslyWithCompletionHandler:^
          {
+             if([[NSFileManager defaultManager] fileExistsAtPath:foreGroundSquareVideoUrl.path])
+             {
+                 NSLog(@"deleting foreGroundSquareVideoUrl");
+                 [[NSFileManager defaultManager] removeItemAtPath:foreGroundSquareVideoUrl.path error:nil];
+             }
+             
+             if([[NSFileManager defaultManager] fileExistsAtPath:bgSquareVideoUrl.path])
+             {
+                 NSLog(@"deleting bgSquareVideoUrl");
+                 [[NSFileManager defaultManager] removeItemAtPath:bgSquareVideoUrl.path error:nil];
+             }
+             
+             
              if(exporter.status == AVAssetExportSessionStatusCompleted)
              {
                  NSLog(@"compleeeteteted");
@@ -247,31 +254,6 @@
     AVAssetTrack *videoAssetTrack = [[videoAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
     [videolayerInstruction setTransform:videoAssetTrack.preferredTransform atTime:kCMTimeZero];
 }
-
-//-(void)cropAsCircleWithComposistion:(AVMutableVideoComposition*)composition size:(CGSize)size
-//{
-//    // 1 - Layer setup
-//    CALayer *parentLayer = [CALayer layer];
-//    CALayer *videoLayer = [CALayer layer];
-//
-//    parentLayer.frame = CGRectMake(0, 0, size.width, size.height);
-//    videoLayer.frame = CGRectMake(0, 0, size.width, size.height);
-//
-//    [parentLayer addSublayer:videoLayer];
-//
-//    [videoLayer setCornerRadius:size.height / 2];
-//    [videoLayer setMasksToBounds:YES];
-//
-//    [videoLayer setBackgroundColor:[UIColor redColor].CGColor];
-//    [parentLayer setBackgroundColor:[UIColor clearColor].CGColor];
-//
-//
-//
-//    // 5 - Composition
-//    composition.animationTool = [AVVideoCompositionCoreAnimationTool
-//                                 videoCompositionCoreAnimationToolWithPostProcessingAsVideoLayer:videoLayer inLayer:parentLayer];
-//}
-
 
 -(void)cropSquareVideoWithUrl:(NSURL*)url completionHandler:(void(^)(NSURL*))callback
 {
@@ -337,80 +319,6 @@
     }];
 }
 
-
--(NSString*)getFilePathWithExtension:(NSString*)extension
-{
-    NSString* docFolder = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
-    double date = round([[NSDate date] timeIntervalSince1970]) * 1000;
-    
-    CFUUIDRef udid = CFUUIDCreate(NULL);
-    NSString *udidString = (NSString *) CFBridgingRelease(CFUUIDCreateString(NULL, udid));
-    NSString* videoName = [NSString stringWithFormat:@"croppedVideo_%@_%f.%@",udidString, date, extension];
-
-    NSString* outputPath = [docFolder stringByAppendingPathComponent:videoName];
-    return outputPath;
-}
-
-
-- (CGSize)customVideoCompositorDelegateGetFrontSize
-{
-    return _frontSize;
-}
-
-- (CGPoint)customVideoCompositorDelegateGetOrigin
-{
-    return _frontOrigin;
-}
-
-- (Boolean)customVideoCompositorDelegateShouldStrokeFrontCircle
-{
-    return _shouldStroke;
-}
-
-
-
-
-//AVMutableComposition *mixComposition = [AVMutableComposition composition];
-//AVMutableCompositionTrack *compositionTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
-//NSError * error = nil;
-//NSMutableArray * timeRanges = [NSMutableArray arrayWithCapacity:videoClipPaths.count];
-//NSMutableArray * tracks = [NSMutableArray arrayWithCapacity:videoClipPaths.count];
-//for (int i=0; i<[videoClipPaths count]; i++) {
-//    AVURLAsset *assetClip = [videoClipPaths objectAtIndex:i];
-//    AVAssetTrack *clipVideoTrackB = [[assetClip tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0];
-//
-//    [timeRanges addObject:[NSValue valueWithCMTimeRange:CMTimeRangeMake(kCMTimeZero, assetClip.duration)]];
-//    [tracks addObject:clipVideoTrackB];
-//}
-//[compositionTrack insertTimeRanges:timeRanges ofTracks:tracks atTime:kCMTimeZero error:&error];
-//
-//AVAssetExportSession *exporter = [[AVAssetExportSession alloc] initWithAsset:mixComposition presetName:AVAssetExportPreset1280x720];
-//NSParameterAssert(exporter != nil);
-//NSArray *t;
-//NSString *u;
-//
-//t = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-//u = [t objectAtIndex:0];
-//NSString *finalPath = [u stringByAppendingPathComponent:@"final.mov"];
-//NSURL *lastURL = [NSURL fileURLWithPath:finalPath];
-//exporter.outputFileType = AVFileTypeQuickTimeMovie;
-//exporter.outputURL = lastURL;
-//[exporter exportAsynchronouslyWithCompletionHandler:^(void){
-//    switch (exporter.status) {
-//        case AVAssetExportSessionStatusFailed:
-//            NSLog(@"exporting failed");
-//            break;
-//        case AVAssetExportSessionStatusCompleted:
-//            NSLog(@"exporting completed");
-//            //UISaveVideoAtPathToSavedPhotosAlbum(filePath, self, nil, NULL);
-//            break;
-//        case AVAssetExportSessionStatusCancelled:
-//            NSLog(@"export cancelled");
-//            break;
-//    }
-//}];
-
-
 -(void)repeatVideo:(NSURL*) url mustBeVideoTime:(CMTime)mustBeTime completionHandler:(void(^)(NSURL*))callback
 {
     NSString* outputPath = [self getFilePathWithExtension:@"mp4"];
@@ -425,7 +333,7 @@
     
     AVMutableCompositionTrack *videoTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
     AVMutableCompositionTrack *audioTrack = [composition  addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
-
+    
     CMTime totalTime = kCMTimeZero;
     
     if (CMTimeCompare(mustBeTime, asset.duration) != 0) // diferrent
@@ -442,17 +350,17 @@
                 addedTime = CMTimeSubtract(asset.duration, mustDeleteValue);
                 totalTime = CMTimeSubtract(totalTime, mustDeleteValue);
             }
-
+            
             [videoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero,addedTime )
                                 ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
                                  atTime:currentTime error:nil];
-
+            
             [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, addedTime)
                                 ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
                                  atTime:currentTime error:nil];
-
+            
             currentTime = CMTimeAdd(currentTime, addedTime);
-
+            
             if  (CMTimeCompare(currentTime, mustBeTime) == 0)
             {
                 break;
@@ -501,7 +409,7 @@
 {
     AVMutableComposition *mainComposition = [[AVMutableComposition alloc] init];
     AVMutableCompositionTrack *compositionVideoTrack = [mainComposition addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
-
+    
     
     AVMutableCompositionTrack *soundtrackTrack = [mainComposition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
     CMTime insertTime = kCMTimeZero;
@@ -545,6 +453,47 @@
         });
     }];
 }
+
+
+-(NSString*)getFilePathWithExtension:(NSString*)extension
+{
+    NSString* docFolder = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
+    double date = round([[NSDate date] timeIntervalSince1970]) * 1000;
+    
+    CFUUIDRef udid = CFUUIDCreate(NULL);
+    NSString *udidString = (NSString *) CFBridgingRelease(CFUUIDCreateString(NULL, udid));
+    NSString* videoName = [NSString stringWithFormat:@"croppedVideo_%@_%f.%@",udidString, date, extension];
+
+    NSString* outputPath = [docFolder stringByAppendingPathComponent:videoName];
+    return outputPath;
+}
+
+
+- (CGSize)customVideoCompositorDelegateGetFrontSize
+{
+    return _frontSize;
+}
+
+- (CGPoint)customVideoCompositorDelegateGetOrigin
+{
+    return _frontOrigin;
+}
+
+- (Boolean)customVideoCompositorDelegateShouldStrokeFrontCircle
+{
+    return _shouldStroke;
+}
+
+- (CGImageRef )customVideoCompositorDelegateGetMaskImg
+{
+    if (self.maskImg != NULL)
+    {
+        return self.maskImg.CGImage;
+    }
+    return NULL;
+}
+
+
 
 
 
